@@ -1,0 +1,27 @@
+﻿# Secrets
+*API Key*.txt
+*.env
+.env.*
+
+# Runtime output
+seedance_last_error.json
+seedance_task_response.json
+seedance_task_status.json
+
+# Dependencies and caches
+node_modules/
+.npm/
+.cache/
+.tools/
+backups/
+
+# Generated media / large local assets
+AI视频测试/
+模特/
+衣服/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
