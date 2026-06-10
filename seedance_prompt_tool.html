@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seedance2.0 视频提示词生成器</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --panel: #ffffff;
+      --ink: #202425;
+      --muted: #6a7272;
+      --line: #dfe4df;
+      --field: #f9faf7;
+      --accent: #1c6b58;
+      --accent-strong: #105342;
+      --accent-soft: #dceee7;
+      --warn: #8a4b16;
+      --shadow: 0 18px 45px rgba(25, 35, 32, .09);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(246,247,244,.4)),
+        var(--bg);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(14px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .topbar {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .live-status {
+      min-width: 260px;
+      max-width: 420px;
+      min-height: 44px;
+      border: 1px solid #cfe1d9;
+      background: #f2faf6;
+      color: #1c4c41;
+      border-radius: 7px;
+      padding: 7px 10px;
+      display: grid;
+      gap: 2px;
+      line-height: 1.25;
+    }
+
+    .live-status strong {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .live-status span {
+      font-size: 12px;
+      color: #416a60;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .live-status.running {
+      border-color: #9acabb;
+      background: #e8f5ef;
+    }
+
+    .live-status.done {
+      border-color: #7bb79f;
+      background: #dff2ea;
+    }
+
+    .live-status.error {
+      border-color: #e0b3a8;
+      background: #fff0ed;
+      color: #7c2d1f;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: #b7c4be;
+      background: #fbfcfa;
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+      font-weight: 650;
+    }
+
+    .btn.primary:hover {
+      border-color: var(--accent-strong);
+      background: var(--accent-strong);
+    }
+
+    main {
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .panel-head {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    form {
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .label {
+      color: #2f3636;
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    textarea,
+    input[type="text"],
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--field);
+      color: var(--ink);
+      padding: 11px 12px;
+      outline: none;
+      min-height: 42px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 104px;
+      line-height: 1.5;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(28, 107, 88, .14);
+      background: white;
+    }
+
+    .upload {
+      border: 1px dashed #aebbb5;
+      border-radius: var(--radius);
+      background: #fbfcfa;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .upload-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input[type="file"] {
+      max-width: 100%;
+    }
+
+    .previews {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .thumb {
+      aspect-ratio: 3 / 4;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #eef1ed;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb span {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      bottom: 6px;
+      color: white;
+      background: rgba(0,0,0,.48);
+      border-radius: 5px;
+      padding: 4px 5px;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .thumb-remove {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255,255,255,.75);
+      border-radius: 50%;
+      background: rgba(15, 22, 20, .72);
+      color: white;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,.22);
+    }
+
+    .thumb-remove:hover {
+      background: rgba(138, 36, 22, .9);
+    }
+
+    .thumb-remove svg {
+      width: 14px;
+      height: 14px;
+      pointer-events: none;
+    }
+
+    .rules {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rule {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      border: 1px solid #cfe1d9;
+      background: var(--accent-soft);
+      color: #173d34;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .rule svg,
+    .btn svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: #303737;
+      line-height: 1.35;
+    }
+
+    .checkline input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--accent);
+    }
+
+    .output {
+      min-height: calc(100vh - 128px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .prompt-box {
+      padding: 18px;
+      min-height: 620px;
+      display: grid;
+    }
+
+    .review-output {
+      width: 100%;
+      min-height: 100%;
+      border: 1px solid var(--line);
+      background: #fbfcfa;
+      color: var(--ink);
+      border-radius: var(--radius);
+      padding: 18px;
+      line-height: 1.7;
+      font-size: 14px;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+
+    .review-output:focus {
+      outline: 3px solid rgba(28, 107, 88, .16);
+      border-color: var(--accent);
+    }
+
+    #promptOutput {
+      display: none;
+    }
+
+    .complete-panel {
+      display: none;
+      margin-top: 14px;
+      border: 1px solid #b9ded0;
+      background: #eef8f3;
+      border-radius: var(--radius);
+      padding: 14px;
+      color: #173d34;
+      line-height: 1.5;
+    }
+
+    .complete-panel.show {
+      display: grid;
+      gap: 10px;
+    }
+
+    .complete-panel h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .complete-panel p {
+      margin: 0;
+      color: #315c51;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .complete-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      background: #17211e;
+      color: white;
+      border-radius: 7px;
+      padding: 12px 14px;
+      font-size: 13px;
+      box-shadow: 0 16px 38px rgba(0,0,0,.22);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: .18s ease;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .output {
+        min-height: 560px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 14px;
+      }
+
+      .toolbar {
+        justify-content: stretch;
+      }
+
+      .btn {
+        flex: 1 1 auto;
+      }
+
+      .live-status {
+        flex: 1 1 100%;
+        max-width: none;
+      }
+
+      main {
+        padding: 14px;
+      }
+
+      .panel-head {
+        flex-direction: column;
+      }
+
+      .status {
+        text-align: left;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .previews {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <div class="brand">
+          <h1>Seedance2.0 视频提示词生成器</h1>
+          <p>参考图与补充信息提交后，生成 3:4、15 秒、服饰锁定的完整视频提示词。</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn" type="button" id="copyBtn" title="复制生成结果">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            复制
+          </button>
+          <button class="btn" type="button" id="downloadBtn" title="下载为文本文件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>
+            下载
+          </button>
+          <div id="liveStatus" class="live-status" aria-live="polite">
+            <strong>视频生成动态</strong>
+            <span id="liveStatusText">待生成</span>
+          </div>
+          <button class="btn primary" type="button" id="generateTopBtn" title="审核通过后生成视频">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h8l-1 8 11-13h-8l1-7z"></path></svg>
+            生成视频
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>提交信息</h2>
+            <p>图片只在本页预览，不会上传到外部服务。</p>
+          </div>
+        </div>
+
+        <form id="promptForm">
+          <div class="field">
+            <span class="label">参考图片</span>
+            <div class="upload">
+              <div class="upload-row">
+                <input type="file" id="images" accept="image/*" multiple>
+              </div>
+              <div class="previews" id="previews"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="videoName">视频文件名</label>
+            <input id="videoName" type="text" placeholder="填写照片所在文件夹名，生成后会按这个名字保存">
+          </div>
+
+          <div class="field">
+            <label for="subject">画面主体</label>
+            <input id="subject" type="text" value="上传图片中的衣服是核心主体；图片中的狗模特作为体型、姿态和穿着效果参考；狗狗性别固定为女孩，不要男孩，不要公狗特征；镜头不要清晰暴露私密区域">
+          </div>
+
+          <div class="field">
+            <label for="scene">场景与氛围</label>
+            <textarea id="scene">由系统根据上传衣服的款式、颜色、图案、季节感和狗模特气质，自动构思一个适合该服饰的全新故事环境；如果识别到是节日款衣服，必须生成浓烈、明确、一眼能看出对应节日的场景与氛围，不能只有少量装饰；不要照搬参考图片里的背景、房间、家具或道具。</textarea>
+          </div>
+
+          <div class="field">
+            <label for="action">动作与运镜</label>
+            <textarea id="action">由系统根据衣服样式自动设计丰富但清晰的 15 秒小故事动作，突出狗模特穿着该衣服的正面、侧面、背面和关键图案；人物和狗狗动作要比普通展示稍微快一点、更活泼自然，不要慢吞吞；镜头流畅稳定，服饰始终清晰完整。</textarea>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label for="style">画面风格</label>
+              <select id="style">
+                <option value="realistic product commercial">真实商品商业片</option>
+                <option value="soft lifestyle fashion reel">生活方式时装短片</option>
+                <option value="clean studio showcase">干净棚拍展示</option>
+                <option value="warm home lifestyle">温暖居家生活</option>
+                <option value="outdoor natural lifestyle">户外自然生活</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="voiceMode">人物发声</label>
+              <select id="voiceMode">
+                <option value="none">无对话 + 仅纯音乐 BGM</option>
+                <option value="american">人物说美式英语 + 纯音乐 BGM</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">硬性规则</span>
+            <div class="rules">
+              <div class="rule">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                画面比例固定 3:4，时长固定 15 秒
+              </div>
+              <div class="rule">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                仅纯音乐 BGM，无人声歌曲、无音效杂音
+              </div>
+              <div class="rule">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4 2 4 2-1v11h8V10l2 1 2-4z"></path></svg>
+                服饰图案、颜色、版型、款式、材质与细节全程零修改
+              </div>
+              <div class="rule">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                有人物出镜时：美国白人女性；若发声，使用美式英语
+              </div>
+            </div>
+          </div>
+
+          <label class="checkline">
+            <input type="checkbox" id="includeNegative" checked>
+            包含负面提示词
+          </label>
+
+          <button class="btn primary" type="submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h8l-1 8 11-13h-8l1-7z"></path></svg>
+            生成审核稿
+          </button>
+        </form>
+      </section>
+
+      <section class="panel output">
+        <div class="panel-head">
+          <div>
+            <h2>中文审核稿</h2>
+            <p>这里显示你能直接审核的内容，Seedance2.0 英文提示词会在后台同步生成。</p>
+          </div>
+          <div class="status" id="status">尚未生成</div>
+        </div>
+        <div class="prompt-box">
+          <div id="reviewOutput" class="review-output" tabindex="0" aria-label="中文审核提示词"></div>
+          <div id="completePanel" class="complete-panel" aria-live="polite">
+            <h3>视频已完成</h3>
+            <p id="completePath">已保存到项目文件夹。</p>
+            <div class="complete-actions">
+              <a class="btn primary" id="openVideoBtn" href="#" target="_blank" rel="noopener">打开视频</a>
+              <a class="btn" id="downloadVideoBtn" href="#" download>下载视频</a>
+            </div>
+          </div>
+          <textarea id="promptOutput" spellcheck="false" aria-label="后台 Seedance2.0 英文提示词"></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">已复制</div>
+
+  <script>
+    const form = document.querySelector("#promptForm");
+    const imagesInput = document.querySelector("#images");
+    const videoNameInput = document.querySelector("#videoName");
+    const previews = document.querySelector("#previews");
+    const reviewOutput = document.querySelector("#reviewOutput");
+    const completePanel = document.querySelector("#completePanel");
+    const completePath = document.querySelector("#completePath");
+    const openVideoBtn = document.querySelector("#openVideoBtn");
+    const downloadVideoBtn = document.querySelector("#downloadVideoBtn");
+    const output = document.querySelector("#promptOutput");
+    const statusLine = document.querySelector("#status");
+    const copyBtn = document.querySelector("#copyBtn");
+    const downloadBtn = document.querySelector("#downloadBtn");
+    const liveStatus = document.querySelector("#liveStatus");
+    const liveStatusText = document.querySelector("#liveStatusText");
+    const generateTopBtn = document.querySelector("#generateTopBtn");
+    const voiceMode = document.querySelector("#voiceMode");
+    const toast = document.querySelector("#toast");
+
+    let selectedFiles = [];
+
+    function valueOf(id) {
+      return document.querySelector(id).value.trim();
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    function setLiveStatus(message, state = "idle") {
+      liveStatusText.textContent = message;
+      liveStatus.title = message;
+      liveStatus.classList.remove("running", "done", "error");
+      if (state !== "idle") liveStatus.classList.add(state);
+    }
+
+    function renderPreviews() {
+      previews.innerHTML = "";
+      selectedFiles.slice(0, 9).forEach((file, index) => {
+        const item = document.createElement("div");
+        item.className = "thumb";
+
+        const img = document.createElement("img");
+        img.alt = file.name;
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+
+        const name = document.createElement("span");
+        name.textContent = file.name;
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "thumb-remove";
+        remove.title = `删除 ${file.name}`;
+        remove.setAttribute("aria-label", `删除 ${file.name}`);
+        remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>';
+        remove.addEventListener("click", () => {
+          selectedFiles.splice(index, 1);
+          imagesInput.value = "";
+          renderPreviews();
+          generate();
+        });
+
+        item.append(img, remove, name);
+        previews.append(item);
+      });
+    }
+
+    function fileKey(file) {
+      return `${file.name}-${file.size}-${file.lastModified}`;
+    }
+
+    function addSelectedFiles(files) {
+      const existingKeys = new Set(selectedFiles.map(fileKey));
+      files.forEach((file) => {
+        const key = fileKey(file);
+        if (!existingKeys.has(key)) {
+          selectedFiles.push(file);
+          existingKeys.add(key);
+        }
+      });
+    }
+
+    function addFilesFromInput(fileList) {
+      const files = Array.from(fileList || []).filter((file) => file.type.startsWith("image/"));
+      addSelectedFiles(files);
+      renderPreviews();
+      generate();
+    }
+
+    function referenceSection() {
+      if (!selectedFiles.length) {
+        return "Reference images: use the uploaded/provided reference image only as the strict visual source for the clothing design and the dog model. The dog must be a female girl dog with female dog anatomy, not a male boy dog, with no male genital anatomy. Do not show visible male dog genitals. Do not use underside, crotch, belly-up, tail-base close-up, or private-area exposure angles. Keep the private area naturally hidden by pose, clothing, fur, camera angle, or framing. This is a tasteful pet apparel video. Do not copy the reference image background, room, furniture, props, lighting setup, or environment.";
+      }
+
+      const names = selectedFiles.map((file, index) => `${index + 1}. ${file.name}`).join("\n");
+      return `Reference images attached by user:\n${names}\nUse these reference images only as the strict visual source for the clothing and dog model: clothing pattern, color, silhouette, cut, material, texture, fit, all visible garment details, dog breed/body shape, and wearing fit. The dog must be a female girl dog with female dog anatomy, not a male boy dog, with no male genital anatomy. Do not show visible male dog genitals. Do not use underside, crotch, belly-up, tail-base close-up, or private-area exposure angles. Keep the private area naturally hidden by pose, clothing, fur, camera angle, or framing. This is a tasteful pet apparel video. Do not copy or reuse the reference image background, room, furniture, props, lighting setup, wall decor, floor, or original environment. Create a new suitable video world instead.`;
+    }
+
+    function voiceSection() {
+      const mode = voiceMode.value;
+      if (mode === "none") {
+        return "Audio: instrumental background music only, clearly audible and relatively loud at about 70% volume. No singing, no human vocals, no noisy ambience. If the woman appears on screen, she does not speak.";
+      }
+
+      return "Audio: clean instrumental background music only, clearly audible, cheerful, and relatively loud at about 65-75% volume, with no singing and no vocal music. The BGM must be easy to hear throughout the video, not faint or background-only, but it must still leave the spoken dialogue understandable. A supporting American white woman must speak natural American English directly to the dog. Automatically generate suitable spoken dialogue every time based on the current scene, story action, clothing style, season, color, pattern, holiday theme if present, and product mood shown in the reference image(s). The dialogue may be one line or several short lines, depending on the outfit and generated scene rhythm. It should sound like a real owner talking affectionately to the dog, such as calling the dog over, praising the outfit, reacting to the holiday/style moment, or guiding the dog through the story action. The dog may occasionally respond with a short happy bark or cute playful vocal reaction after the woman speaks, making the moment feel cheerful and lively. Keep any dog bark light, brief, natural, and not noisy. The spoken dialogue and occasional dog response must be included in the generated video audio and must not distract from the clothing.";
+    }
+
+    function reviewVoiceText() {
+      const selected = voiceMode.options[voiceMode.selectedIndex].textContent;
+      if (voiceMode.value === "none") {
+        return `${selected}。画面中即使有人物出现，也不说话。纯音乐 BGM 要明显、响亮、清楚可听见，音量约 70%，不要太小声。`;
+      }
+      return `${selected}。系统需要每次根据当前场景、故事动作、衣服款式、颜色、图案、季节感、节日主题和商品氛围，自动生成适合人物对狗狗说的自然美式英语台词；可以是一句，也可以是几句短句，数量和内容要根据上传衣服款式与生成场景变化，并让人物在视频中说出来；台词要像主人温柔地对狗狗说话，不能固定复用。狗狗可以偶尔用短促、开心、可爱的叫声回应人物，让气氛更欢乐，但不能吵。纯音乐 BGM 要明显、响亮、清楚可听见，音量约 65-75%，不要太小声；同时不能完全盖过人物说话。`;
+    }
+
+    function negativeSection() {
+      if (!document.querySelector("#includeNegative").checked) return "";
+      return `
+
+Negative prompt:
+No aspect ratio other than 3:4. Duration must be exactly 15 seconds; no shorter or longer duration. No vocal song, no singing, no messy audio, no harsh or noisy sound effects. Do not make the BGM too quiet, faint, distant, barely audible, or inaudible. Do not set BGM below a clearly audible level; target about 65-75% volume. Do not let BGM completely overpower spoken dialogue. Do not make dog barking loud, frequent, harsh, or annoying. Do not copy the reference image background, room, wall, furniture, floor, props, lighting setup, or original photo environment. Do not put holiday-themed clothing into a generic unrelated scene. Do not make the holiday atmosphere weak, vague, barely visible, or limited to one tiny decoration. Do not mismatch the holiday theme, season, props, or atmosphere. Do not make the dog male or boy-like; the dog must be female/girl with female dog anatomy. No visible male dog genitals, no male genital anatomy, no penis, no testicles, no male belly anatomy. No underside view, no crotch view, no belly-up pose, no tail-base close-up, no private-area exposure, no focus on private anatomy, no genital close-ups, no sexualized framing. Keep the private area naturally hidden by pose, clothing, fur, camera angle, or framing. Do not make the person more important than the clothing. Do not add a person unless the scene, story, or garment demonstration needs one. Do not make the dog or person move sluggishly, unnaturally slowly, or with frozen pauses. Do not alter the clothing in any way. Do not change the garment pattern, color, silhouette, cut, style, material, fabric texture, collar, sleeves, hem, fit, print, embroidery, buttons, seams, decorations, or any small clothing detail. Do not add or remove clothing details. Do not replace the outfit. Do not subtly reshape the garment. No clothing flicker, no fabric warping, no pattern morphing, no color drift, no outfit change between frames. No distorted body, face, fingers, limbs, or fabric. No extra people unless requested. No non-American accent for any spoken English. No captions, subtitles, watermarks, logos, text overlays, blurry focus, shaky camera, harsh deformation, cartoon style, surreal style, or low-quality rendering.`;
+    }
+
+    function buildPrompt() {
+      const subject = valueOf("#subject") || "the clothing from the uploaded reference image is the core subject; the dog model from the image is used as the body, pose, and wearing-fit reference; the dog must be a female girl dog with female dog anatomy, not a male boy dog, with no visible male dog genitals; keep private areas naturally hidden";
+      const scene = valueOf("#scene") || "automatically create a new story environment that matches the clothing style, colors, pattern, season, and dog model personality; if the garment is holiday-themed, the scene and mood must be rich, obvious, and immediately recognizable as that exact holiday, not just lightly decorated; do not copy the reference photo background";
+      const action = valueOf("#action") || "automatically design a rich 15 second mini story with natural dog movement, showing front, side, back, and key clothing details clearly; make the person and dog move slightly faster and more lively than a slow product pose, while keeping the clothing stable and readable";
+      const style = valueOf("#style");
+
+      return `Seedance 2.0 video generation prompt
+
+Core settings:
+- Aspect ratio: 3:4
+- Duration: 15 seconds
+- Model: Seedance 2.0
+- Output style: ${style}
+- Camera: stable, smooth, natural movement
+- Music: instrumental BGM only
+
+${referenceSection()}
+
+Main prompt:
+Create a realistic 3:4 vertical video, exactly 15 seconds long. The core subject is the clothing shown in the uploaded reference image(s). The dog model in the uploaded image(s) is the reference for breed, body shape, scale, pose style, and wearing fit. The dog must be a female girl dog with female dog anatomy, not a male boy dog, with no visible male dog genitals. Do not use underside, crotch, belly-up, tail-base close-up, or private-area exposure angles. Keep private areas naturally hidden by pose, clothing, fur, camera angle, or framing. Keep this as a tasteful pet apparel product video focused on clothing. User subject note: ${subject}. If a person is needed for story continuity, she should appear only as a secondary supporting character and must read visually as an American white woman. Use the provided reference image(s) as the strict source for the clothing and dog model only.
+
+Absolute clothing lock:
+The clothing must remain exactly the same for the entire video. Preserve the exact garment pattern, colors, silhouette, cut, style, material, fabric texture, fit, print, embroidery, decorations, and every visible clothing detail from the reference image(s). Do not redesign, recolor, replace, simplify, clean up, translate, restyle, resize, or reinterpret any clothing element. Do not add or remove details. Do not make subtle changes to the garment shape. The outfit must stay stable and consistent in every frame with no flicker, no morphing, no fabric distortion, no pattern drift, and no outfit change.
+
+Scene:
+${scene}
+Automatically infer the garment mood from the reference image(s), such as cute, sporty, cozy, holiday, outdoor, streetwear, luxury, playful, or warm lifestyle. Pay special attention to holiday clothing designs. If the outfit includes clear holiday signals, such as Christmas, Halloween, Thanksgiving, Easter, Valentine's Day, Independence Day, New Year, St. Patrick's Day, or other seasonal/festival graphics, colors, text, icons, patterns, or motifs, the environment, props, color mood, story beat, and background atmosphere must match that exact holiday. The holiday atmosphere must be strong, immersive, and instantly recognizable, with multiple clear holiday cues in the environment, not just one small decoration. Use appropriate seasonal color palette, iconic props, background details, and story actions so viewers can immediately identify the holiday. Do not place a holiday outfit in a generic unrelated setting. Based on the inferred clothing style and holiday if present, create a fresh environment and story setting that fits the outfit. Do not reproduce the original photo background, room, wall, furniture, props, floor, lighting setup, or any unrelated environmental details from the uploaded image(s).
+
+Action and camera plan:
+${action}
+Create a richer mini story within 15 seconds with clear beginning, movement, and ending beat, while keeping the clothing readable. The dog and any supporting person should move slightly faster, more lively, and more energetic than a slow product pose, but still naturally and realistically. Avoid sluggish, overly slow, or frozen motion. Keep the full outfit visible as much as possible. Use smooth camera movement, stable framing, sharp focus, and natural dog motion. Include angles that show the front, side, back, and the most important garment pattern/detail. If the dog turns, keep the clothing geometry and pattern locked to the reference image without warping.
+
+Conditional character and language requirements:
+The video may focus on the clothing alone if that best preserves the reference. If the story, pose, or product demonstration needs a person, use one supporting American white woman as the wearer. She must not become the main visual priority over the clothing. If the selected audio mode requires speech, the woman must speak directly to the dog in natural American English with an American accent. The spoken dialogue may be one line or several short lines, and it must be newly generated to match the scene, outfit style, holiday theme if present, and story moment. The dog may occasionally answer with a short happy bark or cute playful vocal reaction after the woman speaks. Keep BGM cheerful, clearly audible, and relatively loud at about 65-75% volume, while keeping the speech understandable.
+
+${voiceSection()}
+
+No on-screen text, no subtitles, no captions, no logos, no watermarks.
+
+Recommended Seedance settings:
+- Aspect ratio: 3:4
+- Duration: 15 seconds
+- Reference adherence: highest available
+- Prompt adherence: high
+- Motion strength: low to moderate
+- Camera movement: slow and stable
+- Audio: clean instrumental BGM only${negativeSection()}`;
+    }
+
+    function buildReviewPrompt() {
+      const subject = valueOf("#subject") || "上传图片中的衣服是核心主体；图片中的狗模特作为体型、姿态和穿着效果参考；狗狗性别固定为女孩，不要男孩，不要公狗特征；镜头不要清晰暴露私密区域";
+      const scene = valueOf("#scene") || "根据上传衣服的款式、颜色、图案、季节感和狗模特气质，自动构思一个适合该服饰的全新故事环境；如果识别到是节日款衣服，必须生成浓烈、明确、一眼能看出对应节日的场景与氛围，不能只有少量装饰；不要照搬参考图片里的背景。";
+      const action = valueOf("#action") || "根据衣服样式自动设计丰富但清晰的 15 秒小故事动作，突出狗模特穿着该衣服的正面、侧面、背面和关键图案；人物和狗狗动作要稍微快一点、更活泼自然，但服饰必须稳定清晰。";
+      const style = document.querySelector("#style").options[document.querySelector("#style").selectedIndex].textContent;
+      const imageList = selectedFiles.length
+        ? selectedFiles.map((file, index) => `${index + 1}. ${file.name}`).join("\n")
+        : "暂未选择图片。生成前请上传衣服参考图。";
+      const negative = document.querySelector("#includeNegative").checked
+        ? "\n\n负面约束：不要改衣服，不要换衣服，不要增减服饰细节，不要让图案变形或漂移，不要出现字幕、水印、Logo、杂乱音效、画面抖动、人物畸形、服饰畸变。"
+        : "";
+
+      return `中文审核稿
+
+参考图片：
+${imageList}
+
+视频规格：
+画面比例固定为 3:4。
+视频时长固定为 15 秒。
+音乐只使用纯音乐 BGM，不使用人声歌曲，也不加入杂乱音效。
+
+画面主体：
+${subject}
+重点展示上传图片中的衣服，并参考图片中的狗模特体型、姿态、毛色、穿着效果和服饰贴合关系。
+狗狗性别固定为女孩，不要生成男孩、公狗或偏雄性设定；不能出现可见公狗生殖特征。不要使用腹部朝上、胯下、尾根近景或私密区域暴露角度；私密区域需要通过姿态、衣服、毛发、镜头角度或构图自然遮挡。视频仍然是正常宠物服饰展示。
+图片中的背景信息不作为生成依据，不照搬房间、家具、墙面、地面、道具或原始拍摄环境。
+人物不是主角，只有剧情、穿着展示、动作或服饰上身效果需要时，才作为辅助出现。
+
+人物规则：
+如需要人物出镜，只生成一位美国白人女性作为辅助穿着者或剧情人物。
+如果需要发声，必须使用自然美式英语。
+
+服饰锁定：
+全程严格保持上传图片中衣服的图案、颜色、版型、款式、材质、纹理、轮廓、领口、袖口、下摆、印花、刺绣、装饰和所有可见细节。
+禁止换装、改色、改版型、增减细节、微调衣型、重绘图案、让图案漂移或在不同镜头之间变化。
+
+场景与氛围：
+${scene}
+环境由系统根据衣服样式自行创意构思，可以是户外、节日、街景、庭院、温暖生活方式、宠物派对或其他适合该服饰的场景，但不得按照上传图片背景生成。
+特别注意节日款服饰：如果衣服上有圣诞、万圣节、感恩节、复活节、情人节、独立日、新年、圣帕特里克节或其他节日相关图案、颜色、文字、符号、装饰元素，生成场景必须匹配对应节日，不能生成普通无关场景。节日环境和氛围必须浓烈、沉浸、明确，一眼能看出是什么节日；需要有多重节日信号，比如节日主色、标志性道具、背景布置、季节元素和故事动作，不能只有一点装饰。
+
+动作与运镜：
+${action}
+视频故事需要更丰富，有起始动作、展示动作和结束定格；同时保持服饰正面、侧面、背面和关键图案清楚可见。
+人物和狗狗的动作节奏要比普通商品展示稍微快一点、更活泼一点，避免慢吞吞或僵硬停顿，但不能快到影响服饰清晰度。
+
+画面风格：
+${style}
+
+人物发声：
+${reviewVoiceText()}${negative}`;
+    }
+
+    function generate() {
+      completePanel.classList.remove("show");
+      reviewOutput.textContent = buildReviewPrompt();
+      output.value = buildPrompt();
+      const now = new Date();
+      statusLine.textContent = `审核稿已生成 ${now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+      setLiveStatus("审核稿已更新，等待生成视频");
+    }
+
+    async function approveAndGenerateVideo() {
+      generate();
+      window.seedanceBackendPrompt = output.value;
+      window.seedanceReviewPrompt = reviewOutput.textContent;
+      generateTopBtn.disabled = true;
+      statusLine.textContent = "正在准备提交 Seedance2.0";
+      setLiveStatus("正在准备提交 Seedance2.0", "running");
+
+      const formData = new FormData();
+      formData.append("prompt", output.value);
+      formData.append("reviewPrompt", reviewOutput.textContent);
+      formData.append("ratio", "3:4");
+      formData.append("duration", "15");
+      formData.append("videoName", videoNameInput.value.trim());
+      selectedFiles.forEach((file, index) => {
+        formData.append(`reference_${index + 1}`, file, file.name);
+      });
+
+      const apiBase = location.protocol === "file:" ? "http://127.0.0.1:8787" : "";
+
+      try {
+        const response = await fetch(`${apiBase}/api/seedance/generate`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          let message = `HTTP ${response.status}`;
+          try {
+            const errorResult = await response.json();
+            message = errorResult.error || errorResult.details?.error?.message || errorResult.details?.message || message;
+          } catch {
+            message = await response.text();
+          }
+          throw new Error(message);
+        }
+
+        const result = await response.json();
+        statusLine.textContent = result.taskId ? `已提交任务 ${result.taskId}` : "已提交 Seedance2.0";
+        setLiveStatus(result.taskId ? `已提交任务 ${result.taskId}` : "已提交 Seedance2.0", "running");
+        showToast("已提交 Seedance2.0 生成视频");
+        if (result.taskId) {
+          pollVideoStatus(apiBase, result.taskId);
+        }
+      } catch (error) {
+        const message = error.message || "生成通道未连通";
+        statusLine.textContent = `提交失败：${message}`;
+        setLiveStatus(`提交失败：${message}`, "error");
+        showToast(`提交失败：${message}`);
+      } finally {
+        generateTopBtn.disabled = false;
+      }
+    }
+
+    async function pollVideoStatus(apiBase, taskId) {
+      for (let attempt = 1; attempt <= 90; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 8000));
+        try {
+          const response = await fetch(`${apiBase}/api/seedance/status?id=${encodeURIComponent(taskId)}`);
+          if (!response.ok) continue;
+          const result = await response.json();
+          statusLine.textContent = `Seedance2.0：${result.status || "生成中"}`;
+          setLiveStatus(`Seedance2.0：${result.status || "生成中"}`, "running");
+          if (result.videoUrl) {
+            const localUrl = result.localVideoUrl ? `${apiBase}${result.localVideoUrl}` : result.videoUrl;
+            statusLine.innerHTML = `<a href="${localUrl}" target="_blank" rel="noopener">视频已完成</a>`;
+            setLiveStatus("视频已完成，已保存到项目文件夹", "done");
+            completePath.textContent = result.savedPath
+              ? `已保存到：${result.savedPath}`
+              : "视频已完成，但本地保存路径未返回。";
+            openVideoBtn.href = localUrl;
+            downloadVideoBtn.href = localUrl;
+            completePanel.classList.add("show");
+            showToast("视频已完成并已保存");
+            return;
+          }
+          if (["failed", "cancelled", "canceled"].includes(String(result.status || "").toLowerCase())) {
+            setLiveStatus("视频生成失败", "error");
+            showToast("视频生成失败");
+            return;
+          }
+        } catch {
+          statusLine.textContent = "正在等待 Seedance2.0 返回结果";
+          setLiveStatus("正在等待 Seedance2.0 返回结果", "running");
+        }
+      }
+      statusLine.textContent = "任务已提交，请稍后查询结果";
+      setLiveStatus("任务已提交，请稍后查询结果", "running");
+    }
+
+    imagesInput.addEventListener("change", (event) => {
+      addFilesFromInput(event.target.files);
+      imagesInput.value = "";
+    });
+
+    voiceMode.addEventListener("change", generate);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      generate();
+    });
+
+    generateTopBtn.addEventListener("click", approveAndGenerateVideo);
+
+    copyBtn.addEventListener("click", async () => {
+      if (!reviewOutput.textContent.trim()) generate();
+      try {
+        await navigator.clipboard.writeText(reviewOutput.textContent);
+        showToast("已复制中文审核稿");
+      } catch {
+        output.value = reviewOutput.textContent;
+        output.style.display = "block";
+        output.select();
+        document.execCommand("copy");
+        output.style.display = "none";
+        output.value = window.seedanceBackendPrompt || buildPrompt();
+        showToast("已复制中文审核稿");
+      }
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      if (!reviewOutput.textContent.trim()) generate();
+      const blob = new Blob([reviewOutput.textContent], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "seedance2_review_prompt_zh.txt";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    generate();
+  </script>
+</body>
+</html>
